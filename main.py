@@ -34,13 +34,24 @@ app.add_middleware(
 )
 
 # Google Sheets setup
-SERVICE_ACCOUNT_FILE = "service_account.json"
 SHEET_NAME = "Loan-Lead-Sheet"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
 worksheet = None
+
+# Try to load service account from environment variables first
+GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
+
 try:
-    print(f"[DEBUG] Attempting to load service account file: {SERVICE_ACCOUNT_FILE}")
-    creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    if GOOGLE_SERVICE_ACCOUNT_JSON:
+        print("[DEBUG] Loading service account from environment variable")
+        import json
+        service_account_info = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
+        creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPES)
+    else:
+        print("[DEBUG] Attempting to load service account from file")
+        SERVICE_ACCOUNT_FILE = "service_account.json"
+        creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    
     print("[DEBUG] Service account loaded successfully.")
     gc = gspread.authorize(creds)
     print(f"[DEBUG] Attempting to open Google Sheet: {SHEET_NAME}")
