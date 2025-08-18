@@ -52,6 +52,12 @@ try:
         import base64
         decoded_json = base64.b64decode(GOOGLE_SERVICE_ACCOUNT_JSON_B64).decode('utf-8')
         service_account_info = json.loads(decoded_json)
+        
+        # Fix the private key formatting - replace literal \n with actual newlines
+        if 'private_key' in service_account_info:
+            service_account_info['private_key'] = service_account_info['private_key'].replace('\\n', '\n')
+            print("[DEBUG] Private key formatting fixed")
+        
         creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPES)
     elif GOOGLE_SERVICE_ACCOUNT_JSON:
         print("[DEBUG] Loading service account from environment variable")
