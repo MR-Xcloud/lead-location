@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  loan-lead-backend:
+    build: .
+    container_name: loan-lead-backend
+    ports:
+      - "8040:8040"
+    environment:
+      - MONGO_URI=mongodb+srv://dbAdmin:admin%40123@cluster0.gcitgdq.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
+      - DB_NAME=client_meetings
+    volumes:
+      - ./service_account.json:/app/service_account.json:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8040/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s 

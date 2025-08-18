@@ -1,0 +1,2 @@
+MONGO_URI="mongodb+srv://dbAdmin:admin%40123@cluster0.gcitgdq.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+DB_NAME="client_meetings"
