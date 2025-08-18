@@ -40,9 +40,20 @@ worksheet = None
 
 # Try to load service account from environment variables first
 GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
+GOOGLE_SERVICE_ACCOUNT_JSON_B64 = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON_B64")
+
+print(f"[DEBUG] GOOGLE_SERVICE_ACCOUNT_JSON exists: {GOOGLE_SERVICE_ACCOUNT_JSON is not None}")
+print(f"[DEBUG] GOOGLE_SERVICE_ACCOUNT_JSON_B64 exists: {GOOGLE_SERVICE_ACCOUNT_JSON_B64 is not None}")
 
 try:
-    if GOOGLE_SERVICE_ACCOUNT_JSON:
+    if GOOGLE_SERVICE_ACCOUNT_JSON_B64:
+        print("[DEBUG] Loading service account from base64 environment variable")
+        import json
+        import base64
+        decoded_json = base64.b64decode(GOOGLE_SERVICE_ACCOUNT_JSON_B64).decode('utf-8')
+        service_account_info = json.loads(decoded_json)
+        creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPES)
+    elif GOOGLE_SERVICE_ACCOUNT_JSON:
         print("[DEBUG] Loading service account from environment variable")
         import json
         service_account_info = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
