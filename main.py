@@ -38,36 +38,10 @@ SHEET_NAME = "Loan-Lead-Sheet"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
 worksheet = None
 
-# Try to load service account from environment variables first
-GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
-GOOGLE_SERVICE_ACCOUNT_JSON_B64 = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON_B64")
-
-print(f"[DEBUG] GOOGLE_SERVICE_ACCOUNT_JSON exists: {GOOGLE_SERVICE_ACCOUNT_JSON is not None}")
-print(f"[DEBUG] GOOGLE_SERVICE_ACCOUNT_JSON_B64 exists: {GOOGLE_SERVICE_ACCOUNT_JSON_B64 is not None}")
-
 try:
-    if GOOGLE_SERVICE_ACCOUNT_JSON_B64:
-        print("[DEBUG] Loading service account from base64 environment variable")
-        import json
-        import base64
-        decoded_json = base64.b64decode(GOOGLE_SERVICE_ACCOUNT_JSON_B64).decode('utf-8')
-        service_account_info = json.loads(decoded_json)
-        
-        # Fix the private key formatting - replace literal \n with actual newlines
-        if 'private_key' in service_account_info:
-            service_account_info['private_key'] = service_account_info['private_key'].replace('\\n', '\n')
-            print("[DEBUG] Private key formatting fixed")
-        
-        creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPES)
-    elif GOOGLE_SERVICE_ACCOUNT_JSON:
-        print("[DEBUG] Loading service account from environment variable")
-        import json
-        service_account_info = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
-        creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPES)
-    else:
-        print("[DEBUG] Attempting to load service account from file")
-        SERVICE_ACCOUNT_FILE = "service_account.json"
-        creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    print("[DEBUG] Loading service account from file")
+    SERVICE_ACCOUNT_FILE = "service_account.json"
+    creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
     
     print("[DEBUG] Service account loaded successfully.")
     gc = gspread.authorize(creds)
