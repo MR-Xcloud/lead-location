@@ -1,18 +1,28 @@
 import hashlib
 from datetime import datetime
 from typing import Optional, List
-from fastapi import FastAPI, HTTPException, Body, status
+from datetime import datetime, timedelta
+from fastapi import FastAPI, HTTPException, Body, status, Depends
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from bson import ObjectId # For MongoDB _id
 from database import users_collection, meetings_collection # Import MongoDB collections
 import gspread
 from google.oauth2.service_account import Credentials
 import os
+import jwt # PyJWT
 
 print("[DEBUG] Starting FastAPI app initialization...")
 app = FastAPI()
+
+# JWT settings
+SECRET_KEY = os.getenv("SECRET_KEY", "your-super-secret-key") # Use environment variable for production
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 1440 # Increased to 24 hours for easier testing
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 # Allow CORS for frontend
 app.add_middleware(
@@ -43,14 +53,20 @@ except Exception as e:
 
 
 # --- Models ---
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+
 class UserInDB(BaseModel):
-    id: str # Changed from PyObjectId to str for simpler handling with synchronous pymongo
+    id: str
     name: str
     email: str
     password: str
 
 class MeetingEntry(BaseModel):
-    userId: str
     customerName: str
     photo: str = ""
     meetingStartDate: str
@@ -92,7 +108,7 @@ def signup(payload: dict = Body(...)):
     return UserInDB(**new_user)
 
 # --- Login Endpoint ---
-@app.post("/login", response_model=UserInDB)
+@app.post("/login", response_model=Token)
 def login(payload: dict = Body(...)):
     email = payload.get("email")
     password = payload.get("password")
@@ -109,15 +125,70 @@ def login(payload: dict = Body(...)):
             raise HTTPException(status_code=401, detail="Incorrect password")
     
     user_in_db["id"] = str(user_in_db["_id"])
-    return UserInDB(**user_in_db)
+    
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user_in_db["email"], "name": user_in_db["name"]}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+# --- JWT Utility Functions ---
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def get_current_user(token: str = Depends(oauth2_scheme)):
+    print(f"[DEBUG] get_current_user called. Received token: {token[:30]}...") # Print first 30 chars
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        print(f"[DEBUG] Token decoded. Payload: {payload}")
+        email: str = payload.get("sub")
+        if email is None:
+            print("[DEBUG] Email (sub) not found in token payload.")
+            raise credentials_exception
+        token_data = TokenData(email=email)
+        print(f"[DEBUG] Extracted email from token: {email}")
+    except jwt.ExpiredSignatureError:
+        print("[ERROR] Token has expired.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.InvalidTokenError as e:
+        print(f"[ERROR] Invalid token: {e}")
+        raise credentials_exception
+    except Exception as e:
+        print(f"[ERROR] Unexpected error during token decoding: {e}")
+        raise credentials_exception
+        
+    user = users_collection.find_one({"email": token_data.email})
+    if user is None:
+        print(f"[DEBUG] User not found in DB for email: {token_data.email}")
+        raise credentials_exception
+    print(f"[DEBUG] User found in DB: {user['email']}")
+    user["id"] = str(user["_id"])
+    return UserInDB(**user)
 
 # --- API Endpoints ---
 @app.post("/meetings", response_model=MeetingInDB, status_code=status.HTTP_201_CREATED)
-def add_meeting(entry: MeetingEntry):
+def add_meeting(entry: MeetingEntry, current_user: UserInDB = Depends(get_current_user)):
     print("[DEBUG] Received POST /meetings request.")
-    print(f"[DEBUG] Entry data: {entry}")
+    # print(f"[DEBUG] Entry data: {entry}")
     
     meeting_data = entry.dict()
+    meeting_data["userid"] = current_user.id # Add userid from authenticated user
     
     try:
         # Save to MongoDB
@@ -139,11 +210,10 @@ def add_meeting(entry: MeetingEntry):
         else:
             try:
                 worksheet.append_row([
-                    entry.userId, # UserId
+                    current_user.name, # User's Name (from authenticated user)
                     entry.customerName, # Client Name
                     entry.meetingStartDate, # Date
                     entry.source, # Source
-                    entry.customerName, # Customer Name (Duplicate, consider if needed)
                     entry.phoneNumber, # Phone Number
                     entry.location, # Customer Location
                     entry.product, # Product
@@ -192,12 +262,11 @@ def get_image(meeting_id: str):
         return HTMLResponse(content="<h2>Could not display image.</h2>")
 
 @app.get("/meetings", response_model=List[MeetingInDB])
-def get_meetings(userId: Optional[str] = None):
-    print(f"[DEBUG] GET /meetings for userId={userId}")
+def get_meetings(current_user: UserInDB = Depends(get_current_user)):
+    print(f"[DEBUG] GET /meetings for user: {current_user.email}")
     
-    query = {}
-    if userId:
-        query["userId"] = userId
+    # Always filter by the authenticated user's ID
+    query = {"userid": current_user.id}
     
     meetings_cursor = meetings_collection.find(query)
     meetings_list = []
