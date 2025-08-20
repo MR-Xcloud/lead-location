@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Ensure service_account.json is copied
+# Explicitly copy service account file (in case it was excluded)
 COPY service_account.json /app/service_account.json
 
 # Create .env file from environment variables (will be overridden by docker-compose)

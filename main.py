@@ -52,18 +52,19 @@ try:
         print(f"[ERROR] Service account file not found: {SERVICE_ACCOUNT_FILE}")
         raise FileNotFoundError(f"Service account file not found: {SERVICE_ACCOUNT_FILE}")
     
+    if os.path.isdir(SERVICE_ACCOUNT_FILE):
+        print(f"[ERROR] {SERVICE_ACCOUNT_FILE} is a directory, not a file!")
+        print("[ERROR] This usually happens when Docker COPY fails")
+        raise ValueError(f"{SERVICE_ACCOUNT_FILE} is a directory, not a file")
+    
     print(f"[DEBUG] Service account file found: {SERVICE_ACCOUNT_FILE}")
     
     # Read and fix the service account JSON
     import json
     with open(SERVICE_ACCOUNT_FILE, 'r') as f:
         service_account_info = json.load(f)
-        print("p9-9=----------===============",service_account_info)
         print(f"[DEBUG] Private Key ID: {service_account_info.get('private_key_id', 'NOT_FOUND')}")
         print(f"[DEBUG] Client Email: {service_account_info.get('client_email', 'NOT_FOUND')}")
-        if service_account_info.get('private_key_id') == '12388aaa1de8f221f763908e4995ca73fc55da2f':
-            print("[WARNING] You are still using the OLD credentials!")
-            print("[WARNING] Please download new service account credentials from Google Cloud Console")
     
     # Fix the private key formatting - replace literal \n with actual newlines
     if 'private_key' in service_account_info:
@@ -258,7 +259,7 @@ def add_meeting(entry: MeetingEntry, current_user: UserInDB = Depends(get_curren
         # Conditionally generate image URL
         image_url = ""
         if entry.photo: # Only generate URL if photo data exists
-            image_url = f"http://18.188.184.213:8040/image/{str(new_meeting['_id'])}"
+            image_url = f"https://staging.webmobrildemo.com/loan-lead-backend/image/{str(new_meeting['_id'])}"
         
         # Save meeting info in Google Sheet, with image URL
         if worksheet is None:
