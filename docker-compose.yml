@@ -9,8 +9,6 @@ services:
     environment:
       - MONGO_URI=mongodb+srv://dbAdmin:admin%40123@cluster0.gcitgdq.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
       - DB_NAME=client_meetings
-    volumes:
-      - ./service_account.json:/app/service_account.json:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8040/"]

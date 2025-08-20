@@ -18,6 +18,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# Ensure service_account.json is copied
+COPY service_account.json /app/service_account.json
+
 # Create .env file from environment variables (will be overridden by docker-compose)
 RUN echo "MONGO_URI=mongodb+srv://dbAdmin:admin%40123@cluster0.gcitgdq.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0" > .env && \
     echo "DB_NAME=client_meetings" >> .env
