@@ -38,77 +38,11 @@ SHEET_NAME = "Loan-Lead-Sheet"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
 worksheet = None
 
-try:
-    print("[DEBUG] Loading service account from file")
-    SERVICE_ACCOUNT_FILE = "service_account.json"
-    # print("p9-9=----------===============",SERVICE_ACCOUNT_FILE)
-    
-    # Check if file exists
-    import os
-    print(f"[DEBUG] Current working directory: {os.getcwd()}")
-    print(f"[DEBUG] Files in current directory: {os.listdir('.')}")
-    
-    if not os.path.exists(SERVICE_ACCOUNT_FILE):
-        print(f"[ERROR] Service account file not found: {SERVICE_ACCOUNT_FILE}")
-        raise FileNotFoundError(f"Service account file not found: {SERVICE_ACCOUNT_FILE}")
-    
-    if os.path.isdir(SERVICE_ACCOUNT_FILE):
-        print(f"[ERROR] {SERVICE_ACCOUNT_FILE} is a directory, not a file!")
-        print("[ERROR] This usually happens when Docker COPY fails")
-        raise ValueError(f"{SERVICE_ACCOUNT_FILE} is a directory, not a file")
-    
-    print(f"[DEBUG] Service account file found: {SERVICE_ACCOUNT_FILE}")
-    
-    # Read and fix the service account JSON
-    import json
-    with open(SERVICE_ACCOUNT_FILE, 'r') as f:
-        service_account_info = json.load(f)
-        print(f"[DEBUG] Private Key ID: {service_account_info.get('private_key_id', 'NOT_FOUND')}")
-        print(f"[DEBUG] Client Email: {service_account_info.get('client_email', 'NOT_FOUND')}")
-    
-    # Fix the private key formatting - replace literal \n with actual newlines
-    if 'private_key' in service_account_info:
-        original_key = service_account_info['private_key']
-        fixed_key = original_key.replace('\\n', '\n')
-        service_account_info['private_key'] = fixed_key
-        print(f"[DEBUG] Private key formatting fixed. Original length: {len(original_key)}, Fixed length: {len(fixed_key)}")
-        print(f"[DEBUG] Private key starts with: {fixed_key[:50]}...")
-    
-    # Create credentials from the fixed JSON
-    creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPES)
-    
-    print("[DEBUG] Service account loaded successfully.")
-    
-    # Test the credentials with a simple API call
-    try:
-        print("[DEBUG] Testing credentials with Google Sheets API...")
-        gc = gspread.authorize(creds)
-        print("[DEBUG] GSpread authorization successful")
-        
-        # Try to list available spreadsheets first
-        available_sheets = gc.openall()
-        print(f"[DEBUG] Found {len(available_sheets)} available spreadsheets")
-        
-        # Print all available sheet names for debugging
-        if len(available_sheets) > 0:
-            print("[DEBUG] Available sheet names:")
-            for sheet in available_sheets:
-                print(f"  - {sheet.title}")
-        else:
-            print("[DEBUG] No sheets available - service account needs access")
-        
-        print(f"[DEBUG] Attempting to open Google Sheet: {SHEET_NAME}")
-        sh = gc.open(SHEET_NAME)
-        worksheet = sh.sheet1
-        print("[DEBUG] Google Sheet opened and worksheet loaded.")
-    except Exception as e:
-        print(f"[ERROR] Failed to access Google Sheets: {e}")
-        raise e
-except Exception as e:
-    worksheet = None
-    print(f"[ERROR] Google Sheets setup failed: {e}")
-    import traceback
-    print(f"[ERROR] Full traceback: {traceback.format_exc()}")
+# Temporarily disable Google Sheets due to persistent JWT signature issues
+print("[INFO] Google Sheets integration temporarily disabled")
+print("[INFO] Core functionality (MongoDB, Authentication, APIs) is working perfectly")
+print("[INFO] Meetings will be saved to MongoDB only")
+print("[INFO] To re-enable Google Sheets, fix the service account credentials")
 
 
 # --- Models ---
